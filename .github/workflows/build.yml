@@ -3,47 +3,44 @@ name: 🦕 DinoMax Build
 on:
   push:
     branches: [main]
-  workflow_dispatch:   # permite lanzar manualmente desde GitHub
+  workflow_dispatch:
 
 jobs:
   build:
-    name: Build for Windows
-    runs-on: ubuntu-latest
+    name: Build for macOS (Mac mini)
+    runs-on: [self-hosted, macOS, ARM64]
 
     steps:
-      # 1. Descargar el código
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          lfs: true
 
-      # 2. Cache de la Library de Unity (acelera builds futuros)
-      - name: Cache Unity Library
-        uses: actions/cache@v3
-        with:
-          path: Library
-          key: Library-DinoMax-Windows
-          restore-keys: |
-            Library-DinoMax-
-            Library-
-
-      # 3. Compilar con Unity (GameCI)
       - name: Build with Unity
-        uses: game-ci/unity-builder@v4
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL:   ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-        with:
-          targetPlatform: StandaloneWindows64
-          unityVersion: 2022.3.62f1
-          buildName: DinoMax
+        run: |
+          UNITY="/Applications/Unity/Hub/Editor/$(ls /Applications/Unity/Hub/Editor | head -1)/Unity.app/Contents/MacOS/Unity"
+          echo "Unity: $UNITY"
+          "$UNITY" \
+            -batchmode \
+            -nographics \
+            -quit \
+            -projectPath "${{ github.workspace }}" \
+            -buildTarget StandaloneOSX \
+            -buildOSXUniversalPlayer "${{ github.workspace }}/Build/DinoMax.app" \
+            -logFile "${{ github.workspace }}/Build/build.log" \
+            || (cat "${{ github.workspace }}/Build/build.log" && exit 1)
 
-      # 4. Subir el .exe como artefacto descargable
       - name: Upload Build
         uses: actions/upload-artifact@v4
         with:
-          name: DinoMax-Windows
-          path: build/StandaloneWindows64
+          name: DinoMax-macOS
+          path: Build/DinoMax.app
           retention-days: 14
+
+      - name: Upload Log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: Build/build.log
+          retention-days: 7
