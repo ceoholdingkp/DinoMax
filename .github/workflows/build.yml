@@ -16,31 +16,29 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Create Build directory
+        run: mkdir -p "${{ github.workspace }}/Build"
+
       - name: Build with Unity
         run: |
-          UNITY="/Applications/Unity/Hub/Editor/$(ls /Applications/Unity/Hub/Editor | head -1)/Unity.app/Contents/MacOS/Unity"
-          echo "Unity: $UNITY"
-          "$UNITY" \
+          UNITY_PATH="/Applications/Unity/Hub/Editor/6000.3.11f1/Unity.app/Contents/MacOS/Unity"
+          echo "Unity: $UNITY_PATH"
+          "$UNITY_PATH" \
             -batchmode \
             -nographics \
             -quit \
             -projectPath "${{ github.workspace }}" \
-            -buildTarget StandaloneOSX \
-            -buildOSXUniversalPlayer "${{ github.workspace }}/Build/DinoMax.app" \
-            -logFile "${{ github.workspace }}/Build/build.log" \
-            || (cat "${{ github.workspace }}/Build/build.log" && exit 1)
+            -executeMethod BuildScript.BuildMacOS \
+            -buildOutput "${{ github.workspace }}/Build/DinoMax.app" \
+            -logFile - \
+            ; EXIT_CODE=$?
+          echo "Unity exit code: $EXIT_CODE"
+          exit $EXIT_CODE
 
       - name: Upload Build
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: DinoMax-macOS
           path: Build/DinoMax.app
           retention-days: 14
-
-      - name: Upload Log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: Build/build.log
-          retention-days: 7
